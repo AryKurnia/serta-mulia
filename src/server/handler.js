@@ -1,15 +1,13 @@
 const crypto = require('crypto');
 const predictClassification = require('../services/inferenceService');
-const storeData = require('../services/storeData');
+const { storeData, allPredictCollection } = require('../services/storeData');
 
 const postPredictHandler = async (request, h) => {
   const { image } = request.payload;
   const { model } = request.server.app;
 
   const {
-    confidenceScore,
-    label,
-    explanation,
+    result,
     suggestion,
   } = await predictClassification(model, image);
 
@@ -18,9 +16,7 @@ const postPredictHandler = async (request, h) => {
 
   const data = {
     id,
-    label,
-    confidenceScore,
-    explanation,
+    result,
     suggestion,
     createdAt,
   };
@@ -29,11 +25,23 @@ const postPredictHandler = async (request, h) => {
 
   const response = h.response({
     status: 'success',
-    message: confidenceScore > 99 ? 'Model is predicted successfully.' : 'Model is predicted successfully but under threshold. Please use the correct picture',
+    message: 'Model is predicted successfully',
     data,
   });
   response.code(201);
   return response;
 };
 
-module.exports = postPredictHandler;
+const getAllHistories = async (request, h) => {
+  const histories = (await allPredictCollection.get()).docs.map((doc) => doc.data());
+  const data = histories.map((item) => ({
+    id: item.id,
+    history: item,
+  }));
+  return h.response({
+    status: 'success',
+    data,
+  }).code(200);
+};
+
+module.exports = { postPredictHandler, getAllHistories };
